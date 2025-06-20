@@ -43,23 +43,38 @@
 <script lang="ts">
 import { defineComponent, ref } from 'vue'
 import { Category } from '../types/models'
+import { api } from '../services/api'
 
 export default defineComponent({
   name: 'CreateCategoryForm',
-  emits: ['submit', 'close'],
+  emits: ['success', 'error', 'close'],
   setup(_, { emit }) {
     const form = ref<Partial<Category>>({
       name: '',
       description: ''
     })
+    const loading = ref(false)
+    const error = ref('')
 
-    const handleSubmit = () => {
-      emit('submit', form.value)
+    const handleSubmit = async () => {
+      loading.value = true
+      error.value = ''
+      try {
+        const created = await api.createCategory(form.value)
+        emit('success', created)
+      } catch (e: any) {
+        error.value = e.message || 'Failed to create category'
+        emit('error', error.value)
+      } finally {
+        loading.value = false
+      }
     }
 
     return {
       form,
-      handleSubmit
+      handleSubmit,
+      loading,
+      error
     }
   }
 })

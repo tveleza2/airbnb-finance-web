@@ -34,22 +34,37 @@
 <script lang="ts">
 import { defineComponent, ref } from 'vue'
 import { Issuer } from '../types/models'
+import { api } from '../services/api'
 
 export default defineComponent({
   name: 'CreateIssuerForm',
-  emits: ['submit', 'close'],
+  emits: ['success', 'error', 'close'],
   setup(_, { emit }) {
     const form = ref<Partial<Issuer>>({
       name: ''
     })
+    const loading = ref(false)
+    const error = ref('')
 
-    const handleSubmit = () => {
-      emit('submit', form.value)
+    const handleSubmit = async () => {
+      loading.value = true
+      error.value = ''
+      try {
+        const created = await api.createIssuer(form.value)
+        emit('success', created)
+      } catch (e: any) {
+        error.value = e.message || 'Failed to create issuer'
+        emit('error', error.value)
+      } finally {
+        loading.value = false
+      }
     }
 
     return {
       form,
-      handleSubmit
+      handleSubmit,
+      loading,
+      error
     }
   }
 })

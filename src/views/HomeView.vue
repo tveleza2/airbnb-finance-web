@@ -14,7 +14,8 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from 'vue'
+import { defineComponent, ref, onMounted } from 'vue'
+import { api } from '../services/api'
 
 export default defineComponent({
   name: 'HomeView',
@@ -25,9 +26,23 @@ export default defineComponent({
       { title: 'Net Profit', value: '$0.00' },
       { title: 'Monthly Balance', value: '0' }
     ])
+    const error = ref('')
+
+    onMounted(async () => {
+      try {
+        const monthly = await api.getMonthlyStats()
+        metrics.value[0].value = `$${monthly.income.toFixed(2)}`
+        metrics.value[1].value = `$${monthly.expenses.toFixed(2)}`
+        metrics.value[2].value = `$${monthly.profit.toFixed(2)}`
+        metrics.value[3].value = (monthly.profit >= 0 ? '+' : '') + monthly.profit
+      } catch (err: any) {
+        error.value = err.message || 'Failed to load dashboard metrics'
+      }
+    })
 
     return {
-      metrics
+      metrics,
+      error
     }
   }
 })

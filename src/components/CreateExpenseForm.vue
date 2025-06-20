@@ -71,6 +71,20 @@
         </select>
       </div>
 
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Invoice Image</label>
+        <input 
+          type="file"
+          accept="image/*"
+          @change="onFileChange"
+          class="mt-1 block w-full text-sm text-gray-500"
+        />
+        <div v-if="imagePreview" class="mt-2">
+          <img :src="imagePreview" alt="Preview" class="max-h-32 rounded border" />
+        </div>
+        <div v-if="fileLoading" class="text-xs text-gray-500 mt-1">Loading image...</div>
+      </div>
+
       <div class="flex justify-end space-x-3">
         <button 
           type="button" 
@@ -93,10 +107,16 @@
 <script lang="ts">
 import { defineComponent, ref, PropType } from 'vue'
 import { Expense, Category, Issuer } from '../types/models'
+import { api } from '../services/api'
+
+function toISODate(dateStr: string): string {
+  // Converts 'YYYY-MM-DD' to ISO string (UTC midnight)
+  return new Date(dateStr + 'T00:00:00Z').toISOString();
+}
 
 export default defineComponent({
   name: 'CreateExpenseForm',
-  emits: ['submit', 'close'],
+  emits: ['success', 'error', 'close'],
   props: {
     categories: {
       type: Array as PropType<Category[]>,
@@ -114,16 +134,76 @@ export default defineComponent({
       date: new Date().toISOString().slice(0, 10),
       type: 'expense',
       category_id: undefined,
-      issuer_id: undefined
+      issuer_id: undefined,
+      invoice_image: undefined
     })
+    const loading = ref(false)
+    const error = ref('')
+    const fileLoading = ref(false)
+    const imagePreview = ref<string | null>(null)
 
-    const handleSubmit = () => {
-      emit('submit', form.value)
+    const onFileChange = (e: Event) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (!file) return
+      fileLoading.value = true
+      const reader = new FileReader()
+      reader.onload = () => {
+        const result = reader.result as string
+        // Extra check: ensure Data URL prefix is present
+        if (!result.startsWith('data:image/')) {
+          error.value = 'Invalid image format. Please select a valid image file.'
+          form.value.invoice_image = undefined
+          imagePreview.value = null
+          fileLoading.value = false
+          return
+        }
+        form.value.invoice_image = result
+        imagePreview.value = result
+        fileLoading.value = false
+      }
+      reader.onerror = () => {
+        error.value = 'Failed to read image file.'
+        fileLoading.value = false
+      }
+      reader.readAsDataURL(file)
+    }
+
+    const handleSubmit = async () => {
+      if (fileLoading.value) {
+        error.value = 'Please wait for the image to finish loading.'
+        return
+      }
+      loading.value = true
+      error.value = ''
+      try {
+        // Prepare payload to match Go backend
+        const payload: any = {
+          concept: form.value.concept,
+          amount: Number(form.value.amount),
+          date: toISODate(form.value.date as string),
+          type: form.value.type,
+        }
+        if (form.value.category_id) payload.category_id = Number(form.value.category_id)
+        if (form.value.issuer_id) payload.issuer_id = Number(form.value.issuer_id)
+        if (form.value.invoice_image) payload.invoice_image = form.value.invoice_image
+        const created = await api.createExpense(payload)
+        emit('success', created)
+      } catch (e: any) {
+        error.value = e.message || 'Failed to create expense'
+        emit('error', error.value)
+      } finally {
+        loading.value = false
+      }
     }
 
     return {
       form,
-      handleSubmit
+      handleSubmit,
+      loading,
+      error,
+      onFileChange,
+      fileLoading,
+      imagePreview
     }
   }
 })

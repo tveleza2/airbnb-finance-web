@@ -8,13 +8,14 @@
         No expenses recorded yet
       </div>
 
-      <div v-for="expense in expenses" :key="expense.id" class="bg-white rounded-lg shadow p-4">
+      <div v-for="expense in expenses" :key="expense.id" class="bg-white rounded-lg shadow p-4 cursor-pointer hover:bg-gray-50" @click="showExpenseImage(expense)">
         <h3 class="text-lg font-semibold">{{ expense.concept }}</h3>
         <p class="text-gray-600">Amount: ${{ expense.amount.toFixed(2) }}</p>
         <p class="text-gray-600">Date: {{ formatDate(expense.date) }}</p>
         <span class="inline-block bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded mt-2">
           {{ getCategoryName(expense.category_id) }}
         </span>
+        <span v-if="expense.invoice_image" class="ml-2 text-xs text-blue-500">[View Image]</span>
       </div>
     </div>
 
@@ -81,19 +82,61 @@
                   v-if="activeModal === 'expense'"
                   :categories="categories"
                   :issuers="issuers"
-                  @submit="handleExpenseSubmit"
+                  @success="handleExpenseSuccess"
+                  @error="handleExpenseError"
                   @close="closeModal"
                 />
                 <CreateIssuerForm
                   v-if="activeModal === 'issuer'"
-                  @submit="handleIssuerSubmit"
+                  @success="handleIssuerSuccess"
+                  @error="handleIssuerError"
                   @close="closeModal"
                 />
                 <CreateCategoryForm
                   v-if="activeModal === 'category'"
-                  @submit="handleCategorySubmit"
+                  @success="handleCategorySuccess"
+                  @error="handleCategoryError"
                   @close="closeModal"
                 />
+              </DialogPanel>
+            </TransitionChild>
+          </div>
+        </div>
+      </Dialog>
+    </TransitionRoot>
+
+    <!-- Add image modal -->
+    <TransitionRoot appear :show="showImageModal" as="template">
+      <Dialog as="div" @close="closeImageModal" class="relative z-20">
+        <TransitionChild
+          as="template"
+          enter="duration-300 ease-out"
+          enter-from="opacity-0"
+          enter-to="opacity-100"
+          leave="duration-200 ease-in"
+          leave-from="opacity-100"
+          leave-to="opacity-0"
+        >
+          <div class="fixed inset-0 bg-black bg-opacity-40" />
+        </TransitionChild>
+        <div class="fixed inset-0 overflow-y-auto">
+          <div class="flex min-h-full items-center justify-center p-4">
+            <TransitionChild
+              as="template"
+              enter="duration-300 ease-out"
+              enter-from="opacity-0 scale-95"
+              enter-to="opacity-100 scale-100"
+              leave="duration-200 ease-in"
+              leave-from="opacity-100 scale-100"
+              leave-to="opacity-0 scale-95"
+            >
+              <DialogPanel class="w-full max-w-lg transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                <h2 class="text-lg font-semibold mb-4">Invoice Image</h2>
+                <div v-if="selectedExpense && selectedExpense.invoice_image">
+                  <img :src="selectedExpense.invoice_image" alt="Invoice" class="max-w-full max-h-[60vh] mx-auto rounded border" />
+                </div>
+                <div v-else class="text-gray-500">No image available for this expense.</div>
+                <button @click="closeImageModal" class="mt-6 w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Close</button>
               </DialogPanel>
             </TransitionChild>
           </div>
@@ -110,6 +153,7 @@ import CreateExpenseForm from '../components/CreateExpenseForm.vue'
 import CreateIssuerForm from '../components/CreateIssuerForm.vue'
 import CreateCategoryForm from '../components/CreateCategoryForm.vue'
 import { Expense, Category, Issuer } from '../types/models'
+import { api } from '../services/api'
 
 export default defineComponent({
   name: 'ExpensesView',
@@ -129,20 +173,22 @@ export default defineComponent({
     const showOptions = ref(false)
     const isModalOpen = ref(false)
     const activeModal = ref<'expense' | 'issuer' | 'category' | null>(null)
+    const error = ref('')
+    const success = ref('')
+    const showImageModal = ref(false)
+    const selectedExpense = ref<Expense | null>(null)
 
     onMounted(() => {
-      // TODO: Fetch data from API
       loadData()
     })
 
     const loadData = async () => {
       try {
-        // TODO: Replace with actual API calls
-        expenses.value = []
-        categories.value = []
-        issuers.value = []
-      } catch (error) {
-        console.error('Error loading data:', error)
+        expenses.value = await api.getExpenses()
+        categories.value = await api.getCategories()
+        issuers.value = await api.getIssuers()
+      } catch (err: any) {
+        error.value = err.message || 'Failed to load data'
       }
     }
 
@@ -160,6 +206,8 @@ export default defineComponent({
       activeModal.value = type
       isModalOpen.value = true
       showOptions.value = false
+      error.value = ''
+      success.value = ''
     }
 
     const closeModal = () => {
@@ -167,37 +215,39 @@ export default defineComponent({
       activeModal.value = null
     }
 
-    const handleExpenseSubmit = async (data: Partial<Expense>) => {
-      try {
-        // TODO: Implement API call
-        console.log('Creating expense:', data)
-        await loadData()
-        closeModal()
-      } catch (error) {
-        console.error('Error creating expense:', error)
-      }
+    const showExpenseImage = (expense: Expense) => {
+      selectedExpense.value = expense
+      showImageModal.value = true
+    }
+    const closeImageModal = () => {
+      showImageModal.value = false
+      selectedExpense.value = null
     }
 
-    const handleIssuerSubmit = async (data: Partial<Issuer>) => {
-      try {
-        // TODO: Implement API call
-        console.log('Creating issuer:', data)
-        await loadData()
-        closeModal()
-      } catch (error) {
-        console.error('Error creating issuer:', error)
-      }
+    // --- New event-based handlers ---
+    const handleExpenseSuccess = async (created: Expense) => {
+      success.value = 'Expense created successfully!'
+      await loadData()
+      closeModal()
     }
-
-    const handleCategorySubmit = async (data: Partial<Category>) => {
-      try {
-        // TODO: Implement API call
-        console.log('Creating category:', data)
-        await loadData()
-        closeModal()
-      } catch (error) {
-        console.error('Error creating category:', error)
-      }
+    const handleExpenseError = (msg: string) => {
+      error.value = msg
+    }
+    const handleIssuerSuccess = async (created: Issuer) => {
+      success.value = 'Issuer created successfully!'
+      await loadData()
+      closeModal()
+    }
+    const handleIssuerError = (msg: string) => {
+      error.value = msg
+    }
+    const handleCategorySuccess = async (created: Category) => {
+      success.value = 'Category created successfully!'
+      await loadData()
+      closeModal()
+    }
+    const handleCategoryError = (msg: string) => {
+      error.value = msg
     }
 
     return {
@@ -207,13 +257,22 @@ export default defineComponent({
       showOptions,
       isModalOpen,
       activeModal,
+      error,
+      success,
+      showImageModal,
+      selectedExpense,
       formatDate,
       getCategoryName,
       openModal,
       closeModal,
-      handleExpenseSubmit,
-      handleIssuerSubmit,
-      handleCategorySubmit
+      showExpenseImage,
+      closeImageModal,
+      handleExpenseSuccess,
+      handleExpenseError,
+      handleIssuerSuccess,
+      handleIssuerError,
+      handleCategorySuccess,
+      handleCategoryError
     }
   }
 })

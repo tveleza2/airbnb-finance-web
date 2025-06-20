@@ -119,6 +119,7 @@ import {
   TransitionChild,
   TransitionRoot,
 } from '@headlessui/vue'
+import { api } from '../services/api'
 
 interface MonthlyStats {
   income: number
@@ -154,54 +155,29 @@ export default defineComponent({
       profit: 0
     })
 
-    const categoryStats = ref<CategoryStat[]>([
-      { id: 1, name: 'Cleaning', total: 0 },
-      { id: 2, name: 'Maintenance', total: 0 },
-      { id: 3, name: 'Supplies', total: 0 },
-      { id: 4, name: 'Other', total: 0 }
-    ])
-
+    const categoryStats = ref<CategoryStat[]>([])
     const occupancyStats = ref<OccupancyStats>({
       currentMonth: 0,
       lastMonth: 0,
       average: 0
     })
-
     const showMonthlyDetails = ref(false)
     const showCategoryDetails = ref(false)
     const showOccupancyDetails = ref(false)
+    const error = ref('')
 
     onMounted(async () => {
-      // TODO: Fetch real data from API
       await loadReportData()
     })
 
     const loadReportData = async () => {
       try {
-        // TODO: Implement API calls to fetch real data
-        // For now using mock data
-        monthlyStats.value = {
-          income: 5000,
-          expenses: 2000,
-          profit: 3000
-        }
-        
-        // Update category stats
-        categoryStats.value = [
-          { id: 1, name: 'Cleaning', total: 500 },
-          { id: 2, name: 'Maintenance', total: 800 },
-          { id: 3, name: 'Supplies', total: 400 },
-          { id: 4, name: 'Other', total: 300 }
-        ]
-
-        // Update occupancy stats
-        occupancyStats.value = {
-          currentMonth: 85,
-          lastMonth: 78,
-          average: 82
-        }
-      } catch (error) {
-        console.error('Error loading report data:', error)
+        const monthly = await api.getMonthlyStats()
+        monthlyStats.value = monthly
+        categoryStats.value = await api.getCategoryStats()
+        occupancyStats.value = await api.getOccupancyStats()
+      } catch (err: any) {
+        error.value = err.message || 'Failed to load report data'
       }
     }
 
@@ -211,7 +187,8 @@ export default defineComponent({
       occupancyStats,
       showMonthlyDetails,
       showCategoryDetails,
-      showOccupancyDetails
+      showOccupancyDetails,
+      error
     }
   }
 })
