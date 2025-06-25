@@ -69,7 +69,7 @@ export const api = {
     return response.json()
   },
 
-  async updateExpense(id: number, expense: Partial<Expense>): Promise<Expense> {
+  async updateExpense(id: string, expense: Partial<Expense>): Promise<Expense> {
     const response = await fetch(`${API_BASE_URL}/expenses/${id}`, {
       method: 'PUT',
       headers: mergeHeaders({ 'Content-Type': 'application/json' }, authHeaders()),
@@ -79,7 +79,7 @@ export const api = {
     return response.json()
   },
 
-  async deleteExpense(id: number): Promise<void> {
+  async deleteExpense(id: string): Promise<void> {
     const response = await fetch(`${API_BASE_URL}/expenses/${id}`, {
       method: 'DELETE',
       headers: authHeaders()
@@ -105,7 +105,7 @@ export const api = {
     return response.json()
   },
 
-  async updateCategory(id: number, category: Partial<Category>): Promise<Category> {
+  async updateCategory(id: string, category: Partial<Category>): Promise<Category> {
     const response = await fetch(`${API_BASE_URL}/categories/${id}`, {
       method: 'PUT',
       headers: mergeHeaders({ 'Content-Type': 'application/json' }, authHeaders()),
@@ -115,7 +115,7 @@ export const api = {
     return response.json()
   },
 
-  async deleteCategory(id: number): Promise<void> {
+  async deleteCategory(id: string): Promise<void> {
     const response = await fetch(`${API_BASE_URL}/categories/${id}`, {
       method: 'DELETE',
       headers: authHeaders()
@@ -141,7 +141,7 @@ export const api = {
     return response.json()
   },
 
-  async updateIssuer(id: number, issuer: Partial<Issuer>): Promise<Issuer> {
+  async updateIssuer(id: string, issuer: Partial<Issuer>): Promise<Issuer> {
     const response = await fetch(`${API_BASE_URL}/issuers/${id}`, {
       method: 'PUT',
       headers: mergeHeaders({ 'Content-Type': 'application/json' }, authHeaders()),
@@ -151,7 +151,7 @@ export const api = {
     return response.json()
   },
 
-  async deleteIssuer(id: number): Promise<void> {
+  async deleteIssuer(id: string): Promise<void> {
     const response = await fetch(`${API_BASE_URL}/issuers/${id}`, {
       method: 'DELETE',
       headers: authHeaders()

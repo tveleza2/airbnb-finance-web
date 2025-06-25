@@ -183,8 +183,8 @@ export default defineComponent({
           date: toISODate(form.value.date as string),
           type: form.value.type,
         }
-        if (form.value.category_id) payload.category_id = Number(form.value.category_id)
-        if (form.value.issuer_id) payload.issuer_id = Number(form.value.issuer_id)
+        if (form.value.category_id) payload.category_id = form.value.category_id
+        if (form.value.issuer_id) payload.issuer_id = form.value.issuer_id
         if (form.value.invoice_image) payload.invoice_image = form.value.invoice_image
         const created = await api.createExpense(payload)
         emit('success', created)

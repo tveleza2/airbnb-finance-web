@@ -1,21 +1,21 @@
 export interface Expense {
-  id?: number;
+  id?: string;
   concept: string;
   amount: number;
   date: string;
   type?: 'income' | 'expense';
   invoice_image?: string;
-  issuer_id?: number;
-  category_id?: number;
+  issuer_id?: string;
+  category_id?: string;
 }
 
 export interface Issuer {
-  id?: number;
+  id?: string;
   name: string;
 }
 
 export interface Category {
-  id?: number;
+  id?: string;
   name: string;
   description?: string;
 }

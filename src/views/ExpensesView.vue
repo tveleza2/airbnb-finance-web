@@ -8,14 +8,26 @@
         No expenses recorded yet
       </div>
 
-      <div v-for="expense in expenses" :key="expense.id" class="bg-white rounded-lg shadow p-4 cursor-pointer hover:bg-gray-50" @click="showExpenseImage(expense)">
-        <h3 class="text-lg font-semibold">{{ expense.concept }}</h3>
-        <p class="text-gray-600">Amount: ${{ expense.amount.toFixed(2) }}</p>
-        <p class="text-gray-600">Date: {{ formatDate(expense.date) }}</p>
-        <span class="inline-block bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded mt-2">
-          {{ getCategoryName(expense.category_id) }}
-        </span>
-        <span v-if="expense.invoice_image" class="ml-2 text-xs text-blue-500">[View Image]</span>
+      <div v-for="expense in expenses" :key="expense.id" class="bg-white rounded-lg shadow p-4 cursor-pointer hover:bg-gray-50 flex justify-between items-center group" @click="showExpenseImage(expense)">
+        <div>
+          <h3 class="text-lg font-semibold">{{ expense.concept }}</h3>
+          <p class="text-gray-600">Amount: ${{ expense.amount.toFixed(2) }}</p>
+          <p class="text-gray-600">Date: {{ formatDate(expense.date) }}</p>
+          <span class="inline-block bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded mt-2">
+            {{ getCategoryName(expense.category_id) }}
+          </span>
+          <span v-if="expense.invoice_image" class="ml-2 text-xs text-blue-500">[View Image]</span>
+        </div>
+        <button
+          v-if="typeof expense.id === 'string' && expense.id.length > 0"
+          @click.stop="deleteExpense(expense.id as string)"
+          class="ml-4 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+          title="Delete Expense"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -133,7 +145,7 @@
               <DialogPanel class="w-full max-w-lg transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
                 <h2 class="text-lg font-semibold mb-4">Invoice Image</h2>
                 <div v-if="selectedExpense && selectedExpense.invoice_image">
-                  <img :src="selectedExpense.invoice_image" alt="Invoice" class="max-w-full max-h-[60vh] mx-auto rounded border" />
+                  <img :src="fixDropboxUrl(selectedExpense.invoice_image)" alt="Invoice" class="max-w-full max-h-[60vh] mx-auto rounded border" />
                 </div>
                 <div v-else class="text-gray-500">No image available for this expense.</div>
                 <button @click="closeImageModal" class="mt-6 w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Close</button>
@@ -196,7 +208,7 @@ export default defineComponent({
       return new Date(date).toLocaleDateString()
     }
 
-    const getCategoryName = (categoryId?: number) => {
+    const getCategoryName = (categoryId?: string) => {
       if (!categoryId) return 'Uncategorized'
       const category = categories.value.find(c => c.id === categoryId)
       return category?.name || 'Uncategorized'
@@ -250,6 +262,28 @@ export default defineComponent({
       error.value = msg
     }
 
+    const fixDropboxUrl = (url: string) => {
+      // Convert Dropbox shared link to direct download link
+      return url
+        .replace('www.dropbox.com', 'dl.dropboxusercontent.com')
+        .replace('/scl/fi/', '/s/')
+        .replace(/\?dl=0$/, '')
+        .replace(/\?dl=1$/, '')
+        .replace(/\?raw=1$/, '')
+    }
+
+    // --- Delete expense handler ---
+    const deleteExpense = async (id: string) => {
+      if (!confirm('Are you sure you want to delete this expense?')) return
+      try {
+        await api.deleteExpense(id)
+        success.value = 'Expense deleted successfully!'
+        await loadData()
+      } catch (err: any) {
+        error.value = err.message || 'Failed to delete expense'
+      }
+    }
+
     return {
       expenses,
       categories,
@@ -272,7 +306,9 @@ export default defineComponent({
       handleIssuerSuccess,
       handleIssuerError,
       handleCategorySuccess,
-      handleCategoryError
+      handleCategoryError,
+      fixDropboxUrl,
+      deleteExpense,
     }
   }
 })
