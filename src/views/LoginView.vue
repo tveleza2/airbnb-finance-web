@@ -21,7 +21,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { login } from '../services/api'
+import { login as apiLogin, getDropboxAuthUrl } from '../services/api'
+import { getJwtClaims } from '../services/session'
 
 const username = ref('')
 const password = ref('')
@@ -31,7 +32,18 @@ const router = useRouter()
 async function onLogin() {
   error.value = ''
   try {
-    await login(username.value, password.value)
+    // Call backend login and get dropbox_connected flag
+    const response = await apiLogin(username.value, password.value, true)
+    if (response && response.dropbox_connected === false) {
+      // Get user id from JWT
+      const claims = getJwtClaims()
+      const userId = claims && claims.user_id
+      if (userId) {
+        const { auth_url } = await getDropboxAuthUrl(userId)
+        window.location.href = auth_url
+        return
+      }
+    }
     router.push('/')
   } catch (e: any) {
     error.value = e.message || 'Login failed'

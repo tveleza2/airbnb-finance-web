@@ -1,11 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import HomeView from '../views/HomeView.vue';
-import ExpensesView from '../views/ExpensesView.vue';
+import InvoicesView from '../views/InvoicesView.vue';
 import ReportsView from '../views/ReportsView.vue';
 import LoginView from '../views/LoginView.vue';
+import { getToken, isAuthenticated as sessionIsAuthenticated } from '../services/session';
 
 function isAuthenticated() {
-  return !!localStorage.getItem('token');
+  return sessionIsAuthenticated();
 }
 
 const routes = [
@@ -21,14 +22,18 @@ const routes = [
     component: HomeView,
   },
   {
-    path: '/expenses',
-    name: 'expenses',
-    component: ExpensesView,
+    path: '/invoices',
+    name: 'invoices',
+    component: InvoicesView,
   },
   {
     path: '/reports',
     name: 'reports',
     component: ReportsView,
+  },
+  {
+    path: '/expenses',
+    redirect: '/invoices'
   }
 ];
 

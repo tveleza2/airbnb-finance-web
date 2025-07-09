@@ -1,9 +1,10 @@
-export interface Expense {
+export interface Invoice {
   id?: string;
   concept: string;
-  amount: number;
+  full_amount: number;
+  vat: number;
   date: string;
-  type?: 'income' | 'expense';
+  type?: 'income' | 'expense' | 'cost';
   invoice_image?: string;
   issuer_id?: string;
   category_id?: string;

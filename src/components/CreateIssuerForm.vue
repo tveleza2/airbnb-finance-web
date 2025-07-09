@@ -3,6 +3,16 @@
     <h2 class="text-xl font-semibold mb-4">Create New Issuer</h2>
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <div>
+        <div>
+        <label class="block text-sm font-medium text-gray-700">ID</label>
+        <input 
+          v-model="form.id"
+          type="text"
+          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          required
+        />
+      </div>
+      
         <label class="block text-sm font-medium text-gray-700">Name</label>
         <input 
           v-model="form.name"
@@ -11,6 +21,7 @@
           required
         />
       </div>
+      
 
       <div class="flex justify-end space-x-3">
         <button 
@@ -41,6 +52,7 @@ export default defineComponent({
   emits: ['success', 'error', 'close'],
   setup(_, { emit }) {
     const form = ref<Partial<Issuer>>({
+      id:'',
       name: ''
     })
     const loading = ref(false)

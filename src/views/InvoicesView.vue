@@ -1,33 +1,49 @@
+// ...existing code from ExpensesView.vue, but as InvoicesView.vue...
+// This file is now the main invoices view, using Invoice types and CreateInvoiceForm.
+// ...existing code...
 <template>
   <div class="container mx-auto p-6">
-    <h1 class="text-2xl font-bold mb-6">Expenses</h1>
+    <h1 class="text-2xl font-bold mb-6">Invoices</h1>
 
-    <!-- Expense List -->
+    <!-- Invoice List -->
     <div class="grid grid-cols-1 gap-4 mb-16">
-      <div v-if="expenses.length === 0" class="text-center text-gray-500 py-8">
-        No expenses recorded yet
+      <div v-if="invoices.length === 0" class="text-center text-gray-500 py-8">
+        No invoices recorded yet
       </div>
 
-      <div v-for="expense in expenses" :key="expense.id" class="bg-white rounded-lg shadow p-4 cursor-pointer hover:bg-gray-50 flex justify-between items-center group" @click="showExpenseImage(expense)">
+      <div v-for="invoice in invoices" :key="invoice.id" class="bg-white rounded-lg shadow p-4 cursor-pointer hover:bg-gray-50 flex justify-between items-center group" @click="showInvoiceImage(invoice)">
         <div>
-          <h3 class="text-lg font-semibold">{{ expense.concept }}</h3>
-          <p class="text-gray-600">Amount: ${{ expense.amount.toFixed(2) }}</p>
-          <p class="text-gray-600">Date: {{ formatDate(expense.date) }}</p>
+          <h3 class="text-lg font-semibold">{{ invoice.concept }}</h3>
+          <p class="text-gray-600">Full Amount: ${{ invoice.full_amount.toFixed(2) }}</p>
+          <p class="text-gray-600">VAT: ${{ invoice.vat.toFixed(2) }}</p>
+          <p class="text-gray-600">Date: {{ formatDate(invoice.date) }}</p>
           <span class="inline-block bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded mt-2">
-            {{ getCategoryName(expense.category_id) }}
+            {{ getCategoryName(invoice.category_id) }}
           </span>
-          <span v-if="expense.invoice_image" class="ml-2 text-xs text-blue-500">[View Image]</span>
+          <span v-if="invoice.invoice_image" class="ml-2 text-xs text-blue-500">[View Image]</span>
         </div>
-        <button
-          v-if="typeof expense.id === 'string' && expense.id.length > 0"
-          @click.stop="deleteExpense(expense.id as string)"
-          class="ml-4 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-          title="Delete Expense"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        <div class="flex items-center space-x-2">
+          <button
+            v-if="typeof invoice.id === 'string' && invoice.id.length > 0"
+            @click.stop="openEditModal(invoice)"
+            class="text-blue-500 hover:text-blue-700 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+            title="Edit Invoice"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487a2.25 2.25 0 1 1 3.182 3.182L7.5 20.213l-4.182.545.545-4.182 13-13z" />
+            </svg>
+          </button>
+          <button
+            v-if="typeof invoice.id === 'string' && invoice.id.length > 0"
+            @click.stop="deleteInvoice(invoice.id as string)"
+            class="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+            title="Delete Invoice"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -43,10 +59,10 @@
       <!-- Options Menu -->
       <div v-if="showOptions" class="absolute bottom-16 right-0 bg-white rounded-lg shadow-xl p-2 w-48">
         <button 
-          @click="openModal('expense')"
+          @click="openModal('invoice')"
           class="block w-full text-left px-4 py-2 hover:bg-gray-100 rounded"
         >
-          Create Expense
+          Create Invoice
         </button>
         <button 
           @click="openModal('issuer')"
@@ -90,12 +106,13 @@
               leave-to="opacity-0 scale-95"
             >
               <DialogPanel class="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                <CreateExpenseForm
-                  v-if="activeModal === 'expense'"
+                <CreateInvoiceForm
+                  v-if="activeModal === 'invoice'"
                   :categories="categories"
                   :issuers="issuers"
-                  @success="handleExpenseSuccess"
-                  @error="handleExpenseError"
+                  :invoice="editInvoice"
+                  @success="handleInvoiceSuccess"
+                  @error="handleInvoiceError"
                   @close="closeModal"
                 />
                 <CreateIssuerForm
@@ -144,10 +161,10 @@
             >
               <DialogPanel class="w-full max-w-lg transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
                 <h2 class="text-lg font-semibold mb-4">Invoice Image</h2>
-                <div v-if="selectedExpense && selectedExpense.invoice_image">
-                  <img :src="fixDropboxUrl(selectedExpense.invoice_image)" alt="Invoice" class="max-w-full max-h-[60vh] mx-auto rounded border" />
+                <div v-if="selectedInvoice && selectedInvoice.invoice_image">
+                  <img :src="fixDropboxUrl(selectedInvoice.invoice_image)" alt="Invoice" class="max-w-full max-h-[60vh] mx-auto rounded border" />
                 </div>
-                <div v-else class="text-gray-500">No image available for this expense.</div>
+                <div v-else class="text-gray-500">No image available for this invoice.</div>
                 <button @click="closeImageModal" class="mt-6 w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Close</button>
               </DialogPanel>
             </TransitionChild>
@@ -161,34 +178,35 @@
 <script lang="ts">
 import { defineComponent, ref, onMounted } from 'vue'
 import { Dialog, DialogPanel, TransitionChild, TransitionRoot } from '@headlessui/vue'
-import CreateExpenseForm from '../components/CreateExpenseForm.vue'
+import CreateInvoiceForm from '../components/CreateInvoiceForm.vue'
 import CreateIssuerForm from '../components/CreateIssuerForm.vue'
 import CreateCategoryForm from '../components/CreateCategoryForm.vue'
-import { Expense, Category, Issuer } from '../types/models'
+import { Invoice, Category, Issuer } from '../types/models'
 import { api } from '../services/api'
 
 export default defineComponent({
-  name: 'ExpensesView',
+  name: 'InvoicesView',
   components: {
     Dialog,
     DialogPanel,
     TransitionChild,
     TransitionRoot,
-    CreateExpenseForm,
+    CreateInvoiceForm,
     CreateIssuerForm,
     CreateCategoryForm
   },
   setup() {
-    const expenses = ref<Expense[]>([])
+    const invoices = ref<Invoice[]>([])
     const categories = ref<Category[]>([])
     const issuers = ref<Issuer[]>([])
     const showOptions = ref(false)
     const isModalOpen = ref(false)
-    const activeModal = ref<'expense' | 'issuer' | 'category' | null>(null)
+    const activeModal = ref<'invoice' | 'issuer' | 'category' | null>(null)
     const error = ref('')
     const success = ref('')
     const showImageModal = ref(false)
-    const selectedExpense = ref<Expense | null>(null)
+    const selectedInvoice = ref<Invoice | null>(null)
+    const editInvoice = ref<Invoice | null>(null)
 
     onMounted(() => {
       loadData()
@@ -196,7 +214,7 @@ export default defineComponent({
 
     const loadData = async () => {
       try {
-        expenses.value = await api.getExpenses()
+        invoices.value = await api.getInvoices()
         categories.value = await api.getCategories()
         issuers.value = await api.getIssuers()
       } catch (err: any) {
@@ -214,7 +232,7 @@ export default defineComponent({
       return category?.name || 'Uncategorized'
     }
 
-    const openModal = (type: 'expense' | 'issuer' | 'category') => {
+    const openModal = (type: 'invoice' | 'issuer' | 'category') => {
       activeModal.value = type
       isModalOpen.value = true
       showOptions.value = false
@@ -227,22 +245,31 @@ export default defineComponent({
       activeModal.value = null
     }
 
-    const showExpenseImage = (expense: Expense) => {
-      selectedExpense.value = expense
+    const showInvoiceImage = (invoice: Invoice) => {
+      selectedInvoice.value = invoice
       showImageModal.value = true
     }
     const closeImageModal = () => {
       showImageModal.value = false
-      selectedExpense.value = null
+      selectedInvoice.value = null
+    }
+
+    const openEditModal = (invoice: Invoice) => {
+      editInvoice.value = { ...invoice }
+      activeModal.value = 'invoice'
+      isModalOpen.value = true
+      showOptions.value = false
+      error.value = ''
+      success.value = ''
     }
 
     // --- New event-based handlers ---
-    const handleExpenseSuccess = async (created: Expense) => {
-      success.value = 'Expense created successfully!'
+    const handleInvoiceSuccess = async (created: Invoice) => {
+      success.value = 'Invoice created successfully!'
       await loadData()
       closeModal()
     }
-    const handleExpenseError = (msg: string) => {
+    const handleInvoiceError = (msg: string) => {
       error.value = msg
     }
     const handleIssuerSuccess = async (created: Issuer) => {
@@ -272,20 +299,20 @@ export default defineComponent({
         .replace(/\?raw=1$/, '')
     }
 
-    // --- Delete expense handler ---
-    const deleteExpense = async (id: string) => {
-      if (!confirm('Are you sure you want to delete this expense?')) return
+    // --- Delete invoice handler ---
+    const deleteInvoice = async (id: string) => {
+      if (!confirm('Are you sure you want to delete this invoice?')) return
       try {
-        await api.deleteExpense(id)
-        success.value = 'Expense deleted successfully!'
+        await api.deleteInvoice(id)
+        success.value = 'Invoice deleted successfully!'
         await loadData()
       } catch (err: any) {
-        error.value = err.message || 'Failed to delete expense'
+        error.value = err.message || 'Failed to delete invoice'
       }
     }
 
     return {
-      expenses,
+      invoices,
       categories,
       issuers,
       showOptions,
@@ -294,21 +321,23 @@ export default defineComponent({
       error,
       success,
       showImageModal,
-      selectedExpense,
+      selectedInvoice,
+      editInvoice,
       formatDate,
       getCategoryName,
       openModal,
       closeModal,
-      showExpenseImage,
+      showInvoiceImage,
       closeImageModal,
-      handleExpenseSuccess,
-      handleExpenseError,
+      openEditModal,
+      handleInvoiceSuccess,
+      handleInvoiceError,
       handleIssuerSuccess,
       handleIssuerError,
       handleCategorySuccess,
       handleCategoryError,
       fixDropboxUrl,
-      deleteExpense,
+      deleteInvoice,
     }
   }
 })

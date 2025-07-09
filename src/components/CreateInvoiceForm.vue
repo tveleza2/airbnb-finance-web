@@ -1,6 +1,6 @@
 <template>
   <div class="p-6">
-    <h2 class="text-xl font-semibold mb-4">Create New Expense</h2>
+    <h2 class="text-xl font-semibold mb-4">{{ isEditMode ? 'Edit' : 'Create New' }} Invoice</h2>
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <div>
         <label class="block text-sm font-medium text-gray-700">Concept</label>
@@ -13,11 +13,28 @@
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700">Amount</label>
+        <label class="block text-sm font-medium text-gray-700">Full Amount</label>
         <input 
-          v-model="form.amount"
-          type="number"
-          step="0.01"
+          :value="isEditingFullAmount ? form.full_amount : formattedFullAmount"
+          @input="onFullAmountInput($event)"
+          @focus="isEditingFullAmount = true"
+          @blur="onFullAmountBlur"
+          type="text"
+          inputmode="decimal"
+          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          required
+        />
+      </div>
+      
+      <div>
+        <label class="block text-sm font-medium text-gray-700">VAT</label>
+        <input 
+          :value="isEditingVat ? form.vat : formattedVat"
+          @input="onVatInput($event)"
+          @focus="isEditingVat = true"
+          @blur="onVatBlur"
+          type="text"
+          inputmode="decimal"
           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           required
         />
@@ -42,6 +59,7 @@
         >
           <option value="expense">Expense</option>
           <option value="income">Income</option>
+          <option value="cost">Cost</option>
         </select>
       </div>
 
@@ -81,6 +99,7 @@
         />
         <div v-if="imagePreview" class="mt-2">
           <img :src="imagePreview" alt="Preview" class="max-h-32 rounded border" />
+          <button type="button" @click="removeImage" class="mt-2 ml-2 px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200">Remove Image</button>
         </div>
         <div v-if="fileLoading" class="text-xs text-gray-500 mt-1">Loading image...</div>
       </div>
@@ -97,7 +116,7 @@
           type="submit"
           class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
         >
-          Create
+          {{ isEditMode ? 'Update' : 'Create' }}
         </button>
       </div>
     </form>
@@ -105,17 +124,16 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, PropType } from 'vue'
-import { Expense, Category, Issuer } from '../types/models'
+import { defineComponent, ref, computed, PropType, watch } from 'vue'
+import { Invoice, Category, Issuer } from '../types/models'
 import { api } from '../services/api'
 
 function toISODate(dateStr: string): string {
-  // Converts 'YYYY-MM-DD' to ISO string (UTC midnight)
   return new Date(dateStr + 'T00:00:00Z').toISOString();
 }
 
 export default defineComponent({
-  name: 'CreateExpenseForm',
+  name: 'CreateInvoiceForm',
   emits: ['success', 'error', 'close'],
   props: {
     categories: {
@@ -125,12 +143,17 @@ export default defineComponent({
     issuers: {
       type: Array as PropType<Issuer[]>,
       required: true
+    },
+    invoice: {
+      type: Object as PropType<Invoice | null>,
+      default: null
     }
   },
   setup(props, { emit }) {
-    const form = ref<Partial<Expense>>({
+    const form = ref<Partial<Invoice>>({
       concept: '',
-      amount: 0,
+      full_amount: 0,
+      vat: 0,
       date: new Date().toISOString().slice(0, 10),
       type: 'expense',
       category_id: undefined,
@@ -141,6 +164,31 @@ export default defineComponent({
     const error = ref('')
     const fileLoading = ref(false)
     const imagePreview = ref<string | null>(null)
+    const isEditingFullAmount = ref(false)
+    const isEditingVat = ref(false)
+
+    // Watch for invoice prop to pre-fill form
+    watch(() => props.invoice, (newInvoice) => {
+      if (newInvoice) {
+        form.value = {
+          ...newInvoice,
+          date: newInvoice.date ? newInvoice.date.slice(0, 10) : new Date().toISOString().slice(0, 10),
+        }
+        imagePreview.value = newInvoice.invoice_image || null
+      } else {
+        form.value = {
+          concept: '',
+          full_amount: 0,
+          vat: 0,
+          date: new Date().toISOString().slice(0, 10),
+          type: 'expense',
+          category_id: undefined,
+          issuer_id: undefined,
+          invoice_image: undefined
+        }
+        imagePreview.value = null
+      }
+    }, { immediate: true })
 
     const onFileChange = (e: Event) => {
       const file = (e.target as HTMLInputElement).files?.[0]
@@ -149,7 +197,6 @@ export default defineComponent({
       const reader = new FileReader()
       reader.onload = () => {
         const result = reader.result as string
-        // Extra check: ensure Data URL prefix is present
         if (!result.startsWith('data:image/')) {
           error.value = 'Invalid image format. Please select a valid image file.'
           form.value.invoice_image = undefined
@@ -168,6 +215,48 @@ export default defineComponent({
       reader.readAsDataURL(file)
     }
 
+    // Currency formatting helpers
+    const formatCurrency = (value: number) => {
+      return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+    }
+    const parseCurrency = (value: string) => {
+      // Remove all non-numeric except dot and minus
+      const num = Number(value.replace(/[^\d.-]/g, ''))
+      return isNaN(num) ? 0 : num
+    }
+
+    const formattedFullAmount = computed({
+      get: () => formatCurrency(Number(form.value.full_amount) || 0),
+      set: (val: string) => {
+        form.value.full_amount = parseCurrency(val)
+      }
+    })
+    const formattedVat = computed({
+      get: () => formatCurrency(Number(form.value.vat) || 0),
+      set: (val: string) => {
+        form.value.vat = parseCurrency(val)
+      }
+    })
+
+    const isEditMode = computed(() => !!props.invoice && !!props.invoice.id)
+
+    function onFullAmountInput(e: Event) {
+      const val = (e.target as HTMLInputElement).value
+      form.value.full_amount = parseCurrency(val)
+    }
+    function onFullAmountBlur() {
+      form.value.full_amount = parseCurrency(String(form.value.full_amount))
+      isEditingFullAmount.value = false
+    }
+    function onVatInput(e: Event) {
+      const val = (e.target as HTMLInputElement).value
+      form.value.vat = parseCurrency(val)
+    }
+    function onVatBlur() {
+      form.value.vat = parseCurrency(String(form.value.vat))
+      isEditingVat.value = false
+    }
+
     const handleSubmit = async () => {
       if (fileLoading.value) {
         error.value = 'Please wait for the image to finish loading.'
@@ -176,24 +265,36 @@ export default defineComponent({
       loading.value = true
       error.value = ''
       try {
-        // Prepare payload to match Go backend
         const payload: any = {
           concept: form.value.concept,
-          amount: Number(form.value.amount),
+          full_amount: Number(form.value.full_amount),
+          vat: Number(form.value.vat),
           date: toISODate(form.value.date as string),
           type: form.value.type,
         }
         if (form.value.category_id) payload.category_id = form.value.category_id
         if (form.value.issuer_id) payload.issuer_id = form.value.issuer_id
         if (form.value.invoice_image) payload.invoice_image = form.value.invoice_image
-        const created = await api.createExpense(payload)
-        emit('success', created)
+        let result
+        if (isEditMode.value && props.invoice && props.invoice.id) {
+          // Update
+          result = await api.updateInvoice(props.invoice.id, payload)
+        } else {
+          // Create
+          result = await api.createInvoice(payload)
+        }
+        emit('success', result)
       } catch (e: any) {
-        error.value = e.message || 'Failed to create expense'
+        error.value = e.message || 'Failed to save invoice'
         emit('error', error.value)
       } finally {
         loading.value = false
       }
+    }
+
+    function removeImage() {
+      form.value.invoice_image = undefined
+      imagePreview.value = null
     }
 
     return {
@@ -203,7 +304,17 @@ export default defineComponent({
       error,
       onFileChange,
       fileLoading,
-      imagePreview
+      imagePreview,
+      formattedFullAmount,
+      formattedVat,
+      onFullAmountInput,
+      onVatInput,
+      onFullAmountBlur,
+      onVatBlur,
+      isEditingFullAmount,
+      isEditingVat,
+      isEditMode,
+      removeImage
     }
   }
 })
