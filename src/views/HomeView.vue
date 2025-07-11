@@ -31,10 +31,13 @@ export default defineComponent({
     onMounted(async () => {
       try {
         const monthly = await api.getMonthlyStats()
-        metrics.value[0].value = `$${monthly.income.toFixed(2)}`
-        metrics.value[1].value = `$${monthly.expenses.toFixed(2)}`
-        metrics.value[2].value = `$${monthly.profit.toFixed(2)}`
-        metrics.value[3].value = (monthly.profit >= 0 ? '+' : '') + monthly.profit
+        const totalExpenses = await api.getTotalExpenses
+        const totalIncome = await api.getTotalIncome
+        const netProfit = await api.getNetProfit
+        metrics.value[0].value = `$${monthly["total-income"].toFixed(2)}`
+        metrics.value[1].value = `$${monthly["total-expenses"].toFixed(2)}`
+        metrics.value[2].value = `$${monthly["net-profit"].toFixed(2)}`
+        metrics.value[3].value = (monthly["monthly-balance"] >= 0 ? '+' : '') + monthly.profit
       } catch (err: any) {
         error.value = err.message || 'Failed to load dashboard metrics'
       }
