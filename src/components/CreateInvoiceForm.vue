@@ -217,7 +217,7 @@ export default defineComponent({
 
     // Currency formatting helpers
     const formatCurrency = (value: number) => {
-      return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+      return value.toLocaleString('en-US', { style: 'currency', currency: 'COP' })
     }
     const parseCurrency = (value: string) => {
       // Remove all non-numeric except dot and minus
